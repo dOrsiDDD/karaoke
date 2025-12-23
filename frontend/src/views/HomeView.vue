@@ -63,12 +63,17 @@ const audioChunks = ref([])
 async function searchSongs() {
   try{
     const res = await fetch(`http://localhost:8000/karaoke_search?q=${encodeURIComponent(searchQuery.value)}`)
-    const data = await res.json()
-    console.log("Resultados da busca:", data)
-    searchResults.value = data.results.results
-    console.log("searchResults atualizado:", searchResults.value)
+    const data = await res.json();
+    console.log("Resultados da busca:", data);
+    if (!res.ok) {
+      searchResults.value = []
+      console.log("Erro ao buscar musicas", data.detail);
+    }
+
+    searchResults.value = data.results.results ?? [];
   } catch(err) {
-    console.error("Erro ao buscar músicas:", err)
+    console.error("Erro de rede:", err);
+    searchResults.value = [];
   }
 }
 
@@ -76,15 +81,15 @@ async function addSongToQueue(song) {
 
   console.log("Iniciando processo para adicionar:", song.artist, song.title);
   
-  // Etapa 1: Construir a query para buscar o vídeo original
+  // Construir a query para buscar o vídeo original
   const originalVideoQuery = encodeURIComponent(`${song.artist} ${song.title}`);
 
   let originalVideoId = null;
 
   try {
-    // Etapa 2: Chamar nosso novo endpoint para obter o ID do vídeo original
+    // Chamar endpoint para obter o ID do vídeo original
     console.log("Buscando vídeo original...");
-    const res = await fetch(`http://localhost:8000/find_original_video?q=${originalVideoQuery}`);
+    const res = await fetch(`http://localhost:8000/original_search?q=${originalVideoQuery}`);
     if (!res.ok) {
       throw new Error("Falha ao buscar o vídeo original no backend.");
     }
@@ -105,7 +110,7 @@ async function addSongToQueue(song) {
     title: song.title,
     artist: song.artist,
     karaoke_video_id: song.karaokeVideoId,
-    original_video_id: originalVideoId,
+    original_video_id: song.originalVideoId,
   };
 
 

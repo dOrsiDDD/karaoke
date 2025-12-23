@@ -6,24 +6,19 @@ from typing import Set, Any
 
 def get_connection(retries: int = 5, delay: float = 2.0):
     """
-    Tenta conectar ao Postgres algumas vezes (útil no startup em Docker Compose).
+    Tenta conectar ao Postgres algumas vezes.
     Usa variáveis de ambiente com valores padrão.
     """
-    dbname = os.getenv("DB_NAME", "karaoke")
-    user = os.getenv("DB_USER", "karaoke_user")
-    password = os.getenv("DB_PASS", "karaoke_pass")
-    host = os.getenv("DB_HOST", "db")  # em dev/local pode ser 'localhost'
-    port = os.getenv("DB_PORT", "5432")
 
     last_exc = None
     for attempt in range(1, retries + 1):
         try:
             return psycopg2.connect(
-                dbname=dbname,
-                user=user,
-                password=password,
-                host=host,
-                port=port
+                dbname=os.getenv("DB_NAME"),
+                user=os.getenv("POSTGRES_USER"),
+                password=os.getenv("POSTGRES_PASSWORD"),
+                host=os.getenv("DB_HOST", "db"),
+                port=os.getenv("DB_PORT", "5432"),
             )
         except Exception as e:
             last_exc = e

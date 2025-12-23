@@ -1,13 +1,14 @@
 import requests
 import database
 from dotenv import load_dotenv
+from fastapi import HTTPException
 import os
 
 load_dotenv()
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
 
 def karaoke_search (query):
-    blocked_ids = database.get_blocked_ids()
+    blocked_ids = set(database.get_blocked_ids())
     queryKaraoke = f"{query} intitle:karaoke -part -cover"
     paramsKaraoke = {
         "part": "snippet",
@@ -20,30 +21,45 @@ def karaoke_search (query):
         "key": YOUTUBE_API_KEY
     }
 
-    r = requests.get("https://www.googleapis.com/youtube/v3/search", params=paramsKaraoke)
-    results = r.json().get("items", [])
-    karaoke_ids = [item["id"]["videoId"] for item in results]
-    karaoke_ids = [vid for vid in karaoke_ids if vid not in blocked_ids]
-    final_ids = []
-    if karaoke_ids:       
-        for item in karaoke_ids:
-                video_id = item["id"]
-                title = item["snippet"]["title"]
-                artist = None
-                if "-" in title:
-                    parts = title.split("-")
-                    artist = parts[0].strip()
-                    title = parts[-1].strip()
-                final_ids.append({
-                    "karaokeVideoId": video_id,
-                    "title": title,
-                    "artist": artist
-                })
+    try:
+        r = requests.get(
+        "https://www.googleapis.com/youtube/v3/search",
+        params = paramsKaraoke,
+        timeout = 10
+        )
+        r.raise_for_status()
+        items = r.json().get("items", [])
+    except Exception as e:
+         print (f"Error: Youtube API error {e}")
+         raise HTTPException(status_code=500,detail="Erro na busca no youtube")
+    
+    results = []
 
+    for item in items:
+        video_id = item["id"].get("videoId")
+        if not video_id:
+            continue
+        if video_id in blocked_ids:
+            continue
+         
+        title = item["snippet"]["title"]
+        artist = None
 
-    print(f"[DEBUG] Resultados da busca: {final_ids}")
+        if "-" in title:
+            parts = title.split("-")
+            artist = parts[0].strip()
+            title = parts[-1].strip()
 
-    return {"results": final_ids}
+        results.append({
+             "karaokeVideoId": video_id,
+             "title": title,
+             "artist": artist
+        })
+
+    print("[DEBUG] Retornando para frontend:", results)
+    return {"results": results}
+
+    
 
 def original_search(q: str):
         query_original = f"{q} intitle:lyrics -karaoke -instrumental"
