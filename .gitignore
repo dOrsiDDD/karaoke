@@ -1,67 +1,39 @@
-# === Python ===
-__pycache__/
-*.py[cod]
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-venv/
-.env
-.venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-*.log
-*.sqlite3  # Exclui o banco de dados SQLite (adicione manualmente se quiser versionar)
-
-# === Flutter ===
-**/android/
-**/ios/
-**/web/
-**/windows/
-**/linux/
-**/macos/
-/build/
-/.dart_tool/
-/.pub-cache/
-/.pub/
-/packages/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-flutter_export_environment.sh
-*.swp
-*.swo
-*.lock
-*.iml
-*.metadata
-*.dart_tool/
-.fvm/
-
-# === IDE ===
-.vscode/
-.idea/
-*.swp
-*.sublime-workspace
-*.sublime-project
-
-# === Sistema ===
+# ===== Geral =====
 .DS_Store
 Thumbs.db
-*.tmp
-*.bak
+*.log
+
 .env
+.env.*
+!.env.example
+
+# ===== Frontend (Vue) =====
+node_modules/
+dist/
+.vite/
+.cache/
+
+# ===== Backend (FastAPI) =====
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+.pytest_cache/
+.coverage
+
+# ===== Banco =====
+*.db
+*.sqlite3
+*.sql
+
+# ===== Tauri =====
+src-tauri/target/
+src-tauri/gen/
+*.exe
+*.msi
+*.dmg
+*.app
+
+# ===== IDE =====
+.vscode/
+.idea/

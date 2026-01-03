@@ -17,7 +17,7 @@ def karaoke_search (query):
         "order": "relevance",
         "videoEmbeddable": "true",
         "videoSyndicated": "true",
-        "maxResults": 15,
+        "maxResults": 3,
         "key": YOUTUBE_API_KEY
     }
 

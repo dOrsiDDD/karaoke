@@ -78,10 +78,7 @@ function onReady(event) {
 async function onError(event) {
   console.error("Erro no player do YouTube:", event.data);
 
-  // Erros 100, 101, 150 geralmente indicam conteúdo bloqueado ou removido
   if ([100, 101, 150].includes(event.data)) {
-    // 'currentSong' deve ser o objeto da música que está tentando tocar
-    // Ele agora tem 'karaokeVideoId' e 'channelId' graças às nossas mudanças no backend
     const song = currentSong.value; 
 
     if (!song) return;
@@ -105,7 +102,6 @@ async function onError(event) {
     }
 
     // 2. Lógica para pular para a próxima música na fila (exemplo)
-    // Você precisará adaptar isso à sua lógica de gerenciamento de fila
     removeSongFromQueue(song.karaokeVideoId); // Remove a música quebrada
     playNextSong(); // Toca a próxima da fila
   }

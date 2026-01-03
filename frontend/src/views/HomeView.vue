@@ -1,7 +1,7 @@
 <template>
   <div class="main-container">
     <header>
-      <h1>Karaoke</h1>
+      <h1>Krlhoke</h1>
       <div class="menu-icon">☰</div>
     </header>
 
@@ -23,10 +23,10 @@
             </div>
           </div>
           
-          <div class="search-bar">
+          <form class="search-bar" @submit.prevent="searchSongs">
             <input v-model="searchQuery" placeholder="Buscar" />
-            <button @click="searchSongs">Buscar</button>
-          </div>
+            <button type="submit" :disabled="!searchQuery">Buscar</button>
+          </form>
 
           <div v-if="searchResults && searchResults.length > 0" class="search-results">
             <div v-for="(song, idx) in searchResults" :key="idx" class="search-item">
@@ -38,7 +38,9 @@
         
         <div class="queue-section">
           <h2>Fila</h2>
-          <SongQueue :songs="upNext" />
+          <SongQueue 
+            :songs="upNext" 
+            @remove-first-song="handleEnded" />
         </div>
       </div>
     </div>
@@ -252,10 +254,10 @@ async function handleEnded() {
 
 <style scoped>
 .main-container {
-  background: #fdf3e7;
+  background: #5b01afd8;
   padding: 1rem;
   font-family: sans-serif;
-  color: #333;
+  color: #370080;
   min-height: 100vh;
 }
 
@@ -267,13 +269,13 @@ header {
 }
 
 header h1 {
-  color: #f15a24;
+  color: #8a078f;
   margin: 0;
 }
 
 .menu-icon {
   font-size: 1.5rem;
-  color: #f15a24;
+  color: #8a078f;
   cursor: pointer;
 }
 
@@ -295,7 +297,7 @@ header h1 {
 
 .queue-section {
   width: 300px;
-  background: #fbead1;
+  background: #370080;
   padding: 1rem;
   border-radius: 0.5rem;
 }
@@ -303,7 +305,7 @@ header h1 {
 .player-wrapper {
   width: 640px;
   height: 390px;
-  background: #fbead1;
+  background: #370080;
   border-radius: 0.75rem;
   overflow: hidden;
   margin-bottom: 1rem;
@@ -315,7 +317,7 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f15a24;
+  color: #b724f1;
   font-size: 1.5rem;
   text-align: center;
 }
@@ -330,14 +332,14 @@ header h1 {
 .search-bar input {
   flex: 1;
   padding: 0.5rem;
-  border: 2px solid #f15a24;
+  border: 2px solid #000000;
   border-radius: 0.5rem;
   font-size: 1rem;
 }
 
 .search-bar button {
-  background: #f15a24;
-  color: white;
+  background: #8a078f;
+  color: #000000;
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 0.5rem;
@@ -354,15 +356,15 @@ header h1 {
 
 .search-results li {
   padding: 0.75rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #370080;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .search-results li button {
-  background: #f15a24;
-  color: white;
+  background: #8a078f;
+  color: rgb(0, 0, 0);
   padding: 0.25rem 0.5rem;
   border: none;
   border-radius: 0.25rem;
@@ -372,18 +374,18 @@ header h1 {
 
 .search-item {
   padding: 0.75rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #8a078f;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
+  background: #8a078f;
   margin-bottom: 0.5rem;
   border-radius: 0.25rem;
 }
 
 .search-item button {
-  background: #f15a24;
-  color: white;
+  background: #8a078f;
+  color: rgb(0, 0, 0);
   padding: 0.5rem 1rem;
   border: none;
   border-radius: 0.25rem;
