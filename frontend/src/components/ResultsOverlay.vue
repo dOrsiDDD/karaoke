@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.75);
+  background: #5b01afd8;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,10 +93,8 @@ onBeforeUnmount(() => {
 }
 
 .card {
-  width: 85vw;
-  height: 85vh;
-  max-width: 1100px;
-  max-height: 700px;
+  width: 65vw;
+  height: 65vh;
   background: #121212;
   border-radius: 24px;
   padding: 32px;
