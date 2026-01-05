@@ -6,6 +6,12 @@
     </header>
 
     <div class="content">
+      <ResultsOverlay
+          v-if="showResultsOverlay"
+          :score="score"
+          :loading="isScoring"
+          @close="closeResults"
+        />
       <div class="player-and-queue">
         <div class="player-section">
           <div class="player-wrapper">
@@ -54,6 +60,8 @@ import { appDataDir } from '@tauri-apps/api/path';
 import { ref } from 'vue'
 import YoutubePlayer from '../components/YoutubePlayer.vue'
 import SongQueue from '../components/SongQueue.vue'
+import ResultsOverlay from '../components/ResultsOverlay.vue'
+import { show } from '@tauri-apps/api/app';
 
 const currentVideoId = ref(null)
 const upNext = ref([]) // lista de músicas que serão tocadas
@@ -61,6 +69,9 @@ const searchQuery = ref('')
 const searchResults = ref([])
 const mediaRecorder = ref(null)
 const audioChunks = ref([])
+const showResultsOverlay = ref(false)
+const isScoring = ref(false)
+const score = ref(null)
 
 async function searchSongs() {
   try{
@@ -224,31 +235,54 @@ async function analyzeRecording(blob) {
     console.error("Nenhum áudio gravado para analisar") 
     return
   }
+
+  isScoring.value = true
+  showResultsOverlay.value = true
+  score.value = null
+
   const formData = new FormData()
   formData.append("karaoke_video_id", currentVideoId.value)
   formData.append("user_audio", blob)
 
-  const res = await fetch("http://localhost:8000/analyze", {
-    method: "POST",
-    body: formData
-  })
+  try {
+    const res = await fetch("http://localhost:8000/analyze", {
+      method: "POST",
+      body: formData
+    })
 
-  const data = await res.json()
-  console.log("Resposta da análise:", data.score)
-  alert(`Nota : ${data.score}`)
+    const data = await res.json()
+    console.log("Resposta da análise:", data.score)
+
+    score.value = data.score
+  } catch (err) {
+    console.error("Erro ao analisar gravação:", err)
+    score.value = 0
+  } finally {
+    isScoring.value = false
+  }
 }
+
+
 
 async function handleEnded() {
   const blob = await stopRecording()
+
   if (blob) {
     await analyzeRecording(blob)
   } else {
     console.warn("Nenhum blob retornado")
   }
+
   audioChunks.value = []
   mediaRecorder.value = null
+}
+
+function closeResults() {
+  showResultsOverlay.value = false
+  score.value = null
+
   upNext.value.shift() // remove a música atual da fila
-  currentVideoId.value = upNext.value.length > 0 ? upNext.value[0].karaoke_video_id : null
+  currentVideoId.value = upNext.value.length > 0 ? upNext.value[0].karaoke_video_id : null // toca a próxima música ou fica nulo
 }
 </script>
 
