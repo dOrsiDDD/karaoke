@@ -50,7 +50,7 @@
             <h2>Fila</h2>
             <SongQueue 
               :songs="upNext" 
-              @remove-first-song="handleEnded" />
+              @remove-first-song="skipSong" />
           </div>
         </div>
       </div>
@@ -284,6 +284,16 @@ async function handleEnded() {
 
   audioChunks.value = []
   mediaRecorder.value = null
+}
+
+function skipSong() {
+  stopRecording()
+
+  audioChunks.value = []
+  mediaRecorder.value = null
+
+  upNext.value.shift() // remove a música atual da fila
+  currentVideoId.value = upNext.value.length > 0 ? upNext.value[0].karaoke_video_id : null // toca a próxima música ou fica nulo
 }
 
 function closeResults() {
