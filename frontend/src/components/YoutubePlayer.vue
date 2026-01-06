@@ -45,8 +45,8 @@ function loadYouTubeAPI() {
 // Inicializa o player
 function initPlayer() {
   player.value = new YT.Player('youtube-player', {
-    height: '390',
-    width: '640',
+    height: '100%',
+    width: '100%',
     videoId: props.videoId,
     playerVars: {
       autoplay: 1,
@@ -141,8 +141,8 @@ watch(() => props.videoId, (newVal) => {
 
 <style scoped>
 .youtube-container {
-  width: 640px;
-  height: 390px;
+  width: 100%;
+  height: 100%;
   position: relative;
 }
 

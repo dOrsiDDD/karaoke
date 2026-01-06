@@ -1,6 +1,6 @@
 <template>
   <ul class="queue-list">
-    <li v-for="song in songs" :key="song">{{ song.artist }} - {{ song.title }} <button @click="removeSong(song)">-</button></li>
+    <li v-for="song in songs" :key="song">{{ song.query }} <button @click="removeSong(song)">x</button></li>
   </ul>
 </template>
 
@@ -39,15 +39,18 @@ async function removeSong(song) {
 
 .queue-list li {
   margin: 0.5rem 0;
-  color: #8a078f;
+  color: #000000;
   cursor: pointer;
+  font-size: 1.1rem;
 }
 
 .queue-list button {
-  margin-left: 1rem;
+  margin-left: 0.5rem;
   background-color: #000000;
+  border-radius: 0.25rem;
   border: none;
   color: #8a078f;
   cursor: pointer;
+  font-size: 1rem;
 }
 </style>
