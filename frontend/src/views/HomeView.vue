@@ -12,41 +12,46 @@
           :loading="isScoring"
           @close="closeResults"
         />
-      <div class="player-and-queue">
+      <div class="layout">
         <div class="player-section">
           <div class="player-wrapper">
-            <div v-if="currentVideoId">
               <YoutubePlayer
+                v-if="currentVideoId"
                 :videoId="currentVideoId"
                 @started="startRecording"
                 @paused="pauseRecording"
                 @playing="resumeRecording"
                 @ended="handleEnded"
               />
-            </div>
             <div v-else class="player-placeholder">
               Selecione uma música para começar
             </div>
           </div>
-          
-          <form class="search-bar" @submit.prevent="searchSongs">
-            <input v-model="searchQuery" placeholder="Buscar" />
-            <button type="submit" :disabled="!searchQuery">Buscar</button>
-          </form>
-
-          <div v-if="searchResults && searchResults.length > 0" class="search-results">
-            <div v-for="(song, idx) in searchResults" :key="idx" class="search-item">
-              <span>{{ song.artist }} {{ song.title }}</span>
-              <button @click="addSongToQueue(song)">Adicionar à fila</button>
-            </div>
-          </div>
         </div>
         
-        <div class="queue-section">
-          <h2>Fila</h2>
-          <SongQueue 
-            :songs="upNext" 
-            @remove-first-song="handleEnded" />
+        <div class="sidebar">
+          <div class="search-area">
+            <form class="search-bar" @submit.prevent="searchSongs">
+              <input v-model="searchQuery" placeholder="Buscar" />
+              <button type="submit" :disabled="!searchQuery">Buscar</button>
+            </form>
+
+            <div class="search-results">
+              <div v-for="(song, idx) in searchResults" :key="idx" class="search-item">
+                <span>{{ song.artist }} {{ song.title }}</span>
+                <button @click="addSongToQueue(song)">Adicionar à fila</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="queue-section">
+            <h2>Fila</h2>
+            <SongQueue 
+              :songs="upNext" 
+              @remove-first-song="handleEnded" />
+          </div>
         </div>
       </div>
     </div>
@@ -124,6 +129,7 @@ async function addSongToQueue(song) {
     artist: song.artist,
     karaoke_video_id: song.karaokeVideoId,
     original_video_id: song.originalVideoId,
+    query: song.query,
   };
 
 
@@ -162,6 +168,9 @@ async function addSongToQueue(song) {
   } catch (err) {
     console.error("Erro de rede ao adicionar música:", err);
   }
+
+  searchQuery.value = ""
+  searchResults.value = []
 }
 
 async function startRecording() {
@@ -288,10 +297,10 @@ function closeResults() {
 
 <style scoped>
 .main-container {
-  background: #5b01afd8;
+  background: linear-gradient(180deg, #5b01afd8, #3a0073);
   padding: 1rem;
   font-family: sans-serif;
-  color: #370080;
+  color: #f3e8ff;
   min-height: 100vh;
 }
 
@@ -299,11 +308,11 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  height: 50px;
 }
 
 header h1 {
-  color: #8a078f;
+  color: #f0c3ff;
   margin: 0;
 }
 
@@ -313,36 +322,24 @@ header h1 {
   cursor: pointer;
 }
 
-.content {
-  display: flex;
-  flex-direction: column;
-}
-
-.player-and-queue {
-  display: flex;
-  gap: 2rem;
+.layout {
+  display: grid;
+  grid-template-columns: 3fr 1.2fr;
+  gap: 1rem;
+  height: calc(100vh - 100px);
 }
 
 .player-section {
-  flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.queue-section {
-  width: 300px;
-  background: #370080;
-  padding: 1rem;
-  border-radius: 0.5rem;
+  height: 100%;
 }
 
 .player-wrapper {
-  width: 640px;
-  height: 390px;
-  background: #370080;
+  flex: 1;
+  background: #2a004d;
   border-radius: 0.75rem;
   overflow: hidden;
-  margin-bottom: 1rem;
 }
 
 .player-placeholder {
@@ -351,30 +348,41 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #b724f1;
+  color: #c77dff;
   font-size: 1.5rem;
-  text-align: center;
+}
+
+.side-bar {
+  display: flex;
+  flex-direction: column;
+  background: #c77dff;
+  gap: 1rem;
+  height: 100%;
+}
+
+.search-area {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #2a004d;
+  color: #000000;
+  margin-bottom: 1rem;
 }
 
 .search-bar {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 1rem;
-  width: 640px;
 }
 
 .search-bar input {
   flex: 1;
   padding: 0.5rem;
-  border: 2px solid #000000;
+  border: none;
   border-radius: 0.5rem;
-  font-size: 1rem;
 }
 
 .search-bar button {
-  background: #8a078f;
-  color: #000000;
-  padding: 0.5rem 1rem;
+  background: #c77dff;
+  color: #2a004d;
   border: none;
   border-radius: 0.5rem;
   font-weight: bold;
@@ -382,39 +390,18 @@ header h1 {
 }
 
 .search-results {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  width: 640px;
-}
-
-.search-results li {
-  padding: 0.75rem;
-  border-bottom: 1px solid #370080;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.search-results li button {
-  background: #8a078f;
-  color: rgb(0, 0, 0);
-  padding: 0.25rem 0.5rem;
-  border: none;
-  border-radius: 0.25rem;
-  font-size: 0.9rem;
-  cursor: pointer;
+  min-height: 160px;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
 }
 
 .search-item {
-  padding: 0.75rem;
-  border-bottom: 1px solid #8a078f;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #8a078f;
-  margin-bottom: 0.5rem;
-  border-radius: 0.25rem;
+  margin-bottom: 0.4rem;
+  border-radius: 0.4rem;
+  padding: 0.5rem;
 }
 
 .search-item button {
@@ -425,4 +412,17 @@ header h1 {
   border-radius: 0.25rem;
   cursor: pointer;
 }
+
+.queue-section h2 {
+  margin-top: 0;
+  color: #f0c3ff;
+}
+
+.queue-section {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  flex: 1;
+  background: #2a004d;
+}
+
 </style>

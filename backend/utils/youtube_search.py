@@ -51,6 +51,7 @@ def karaoke_search (query):
             title = parts[-1].strip()
 
         results.append({
+             "query": query,
              "karaokeVideoId": video_id,
              "title": title,
              "artist": artist
