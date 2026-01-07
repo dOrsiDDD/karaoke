@@ -100,7 +100,7 @@ async function addSongToQueue(song) {
   console.log("Iniciando processo para adicionar:", song.artist, song.title);
   
   // Construir a query para buscar o vídeo original
-  const originalVideoQuery = encodeURIComponent(`${song.artist} ${song.title}`);
+  const originalVideoQuery = encodeURIComponent(`${song.query}`);
 
   let originalVideoId = null;
 
@@ -160,13 +160,13 @@ async function addSongToQueue(song) {
 
   
     if (!res.ok) {
-      const error = await res.text();
-      console.error("Erro no backend ao adicionar música:", error);
+      throw new Error (await res.text());
     } else {
       console.log("Música processada e salva com sucesso");
     }
   } catch (err) {
     console.error("Erro de rede ao adicionar música:", err);
+    return
   }
 
   searchQuery.value = ""
