@@ -55,6 +55,11 @@ async def analyze(karaoke_video_id: str = Form(...), user_audio: UploadFile = Fi
         user_pitch = extract_pitch(wav_path)
         print(f"[DEBUG] Pitch extraído do usuário: {user_pitch[:20]}... (total {len(user_pitch)})")
         original_pitch = get_pitch_from_db(karaoke_video_id)
+        if original_pitch is None:
+            raise HTTPException(
+            status_code=404,
+            detail="Pitch original não encontrado. Música não cadastrada."
+            )
         print(f"[DEBUG] Pitch original carregado: {original_pitch[:20]}... (total {len(original_pitch)})")
 
         # 4. Calcula nota
@@ -94,6 +99,7 @@ async def add_song(req: SongRequest):
 
     existing_song = search_songs(karaoke_id)
     if existing_song:
+        print(f"[DEBUG] Música já cadastrada: {karaoke_id}")
         return JSONResponse({
             "status": "exists",
             "message": "Música já cadastrada",
@@ -123,7 +129,8 @@ async def add_song(req: SongRequest):
                 "title": title,
                 "artist": artist,
                 "karaoke_video_id": karaoke_id,
-                "original_video_id": original_id
+                "original_video_id": original_id,
+                "pitch_data": pitch_data
             }
         }
         return response

@@ -11,14 +11,16 @@ os.environ["FFPROBE_BINARY"] = "/usr/bin/ffprobe"
 
 def download_audio(url: str, progress_hook: Optional[Callable[[dict], None]] = None) -> str:
     ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/bestaudio/best',
+        'format': 'bestaudio/best',
         'outtmpl': 'temp_audio.%(ext)s',
         "ffmpeg_location": "/usr/bin/ffmpeg",
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'wav',
+            'preferredquality': '192',
         }],
         'progress_hooks': [progress_hook] if progress_hook else [],
+        'quiet': True,
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
