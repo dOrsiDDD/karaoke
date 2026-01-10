@@ -1,7 +1,7 @@
 <template>
   <div class="main-container">
     <header>
-      <h1>Krlhoke</h1>
+      <h1>Diegoke</h1>
       <div class="menu-icon">☰</div>
     </header>
 
@@ -146,6 +146,10 @@ async function addSongToQueue(song) {
   upNext.value.push(formatted);
   if (!currentVideoId.value) currentVideoId.value = formatted.karaoke_video_id;
 
+  searchQuery.value = ""
+  searchResults.value = []
+
+  let res
   try {
     if (originalVideoId) {
       const res = await fetch("http://localhost:8000/add_song", {
@@ -157,7 +161,6 @@ async function addSongToQueue(song) {
         }),
       });
     }
-
   
     if (!res.ok) {
       throw new Error (await res.text());
@@ -168,9 +171,6 @@ async function addSongToQueue(song) {
     console.error("Erro de rede ao adicionar música:", err);
     return
   }
-
-  searchQuery.value = ""
-  searchResults.value = []
 }
 
 async function startRecording() {
