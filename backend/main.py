@@ -4,7 +4,8 @@ from pitch_extractor import extract_pitch
 from database import get_pitch_from_db, search_songs, save_song
 import database
 from scoring import calculate_score
-from utils.yt_downloader import download_audio, extract_metadata, progress_hook
+from utils.yt_downloader import download_audio
+from utils.extract_vocal import extract_vocals
 from utils.audio_utils import save_upload_to_temp, convert_to_wav, cleanup_files
 from database import init_db
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,23 +39,29 @@ class ReportRequest(BaseModel):
     video_id: str
 
 @app.post("/analyze")
-async def analyze(karaoke_video_id: str = Form(...), user_audio: UploadFile = File(...)):
+async def analyze(original_video_id: str = Form(...), user_audio: UploadFile = File(...)):
     tmp_path = None
     wav_path = None
     try:
-        print(f"[DEBUG] Iniciando análise para vídeo {karaoke_video_id}")
+        print(f"[DEBUG] Iniciando análise para vídeo {original_video_id}")
         # 1. Salva upload temporário
         tmp_path = save_upload_to_temp(user_audio)
         print(f"[DEBUG] Arquivo salvo em: {tmp_path}")
 
         # 2. Converte para wav normalizado
-        wav_path = convert_to_wav(tmp_path)
+        wav_path = convert_to_wav(tmp_path, channels=1, sr=16000)
         print(f"[DEBUG] Arquivo convertido para WAV: {wav_path}")
 
         # 3. Extrai pitches
         user_pitch = extract_pitch(wav_path)
         print(f"[DEBUG] Pitch extraído do usuário: {user_pitch[:20]}... (total {len(user_pitch)})")
-        original_pitch = get_pitch_from_db(karaoke_video_id)
+        song = search_songs(original_video_id)
+        if not song:
+            raise HTTPException(
+            status_code=404,
+            detail="Música não encontrada."
+            )
+        original_pitch = song[0].get("pitch_data")
         if original_pitch is None:
             raise HTTPException(
             status_code=404,
@@ -97,9 +104,9 @@ async def add_song(req: SongRequest):
     karaoke_id = karaoke_url.split('v=')[-1].split('&')[0]
     original_id = original_url.split('v=')[-1].split('&')[0]
 
-    existing_song = search_songs(karaoke_id)
+    existing_song = search_songs(original_id)
     if existing_song:
-        print(f"[DEBUG] Música já cadastrada: {karaoke_id}")
+        print(f"[DEBUG] Música já cadastrada: {original_id}")
         return JSONResponse({
             "status": "exists",
             "message": "Música já cadastrada",
@@ -108,11 +115,13 @@ async def add_song(req: SongRequest):
 
     try:
         # 1. Baixa áudio e extrai metadados
-        audio_path = download_audio(original_url, progress_hook=progress_hook)
-        title, artist = extract_metadata(original_url)
+        audio_path = download_audio(original_url)
+
+        #2. Extrai vocais
+        vocal_path = extract_vocals(audio_path)
         
-        # 2. Processa o áudio
-        pitch_data = extract_pitch(audio_path).tolist() # Converte numpy array para lista
+        # 3. Processa o áudio
+        pitch_data = extract_pitch(vocal_path).tolist() # Converte numpy array para lista
         
         # 3. Salva no banco de dados
         save_song(

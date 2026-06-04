@@ -42,17 +42,14 @@ def karaoke_search (query):
         if video_id in blocked_ids:
             continue
          
-        title = item["snippet"]["title"]
+        youtubeTitle = item["snippet"]["title"]
         artist = None
-
-        if "-" in title:
-            parts = title.split("-")
-            artist = parts[0].strip()
-            title = parts[-1].strip()
+        title = None
 
         results.append({
              "query": query,
              "karaokeVideoId": video_id,
+             "youtubeTitle": youtubeTitle,
              "title": title,
              "artist": artist
         })
