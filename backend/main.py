@@ -13,6 +13,7 @@ from typing import Optional
 from pydantic import BaseModel
 import uvicorn
 import os
+import traceback
 
 app = FastAPI()
 
@@ -104,15 +105,6 @@ async def add_song(req: SongRequest):
     karaoke_id = karaoke_url.split('v=')[-1].split('&')[0]
     original_id = original_url.split('v=')[-1].split('&')[0]
 
-    existing_song = search_songs(original_id)
-    if existing_song:
-        print(f"[DEBUG] Música já cadastrada: {original_id}")
-        return JSONResponse({
-            "status": "exists",
-            "message": "Música já cadastrada",
-            "details": existing_song
-        })
-
     try:
         # 1. Baixa áudio e extrai metadados
         audio_path = download_audio(original_url)
@@ -121,22 +113,11 @@ async def add_song(req: SongRequest):
         vocal_path = extract_vocals(audio_path)
         
         # 3. Processa o áudio
-        pitch_data = extract_pitch(vocal_path).tolist() # Converte numpy array para lista
-        
-        # 3. Salva no banco de dados
-        save_song(
-            title=title,
-            artist=artist,
-            karaoke_video_id=karaoke_id,
-            original_video_id=original_id,
-            pitch_data=pitch_data 
-        )
+        pitch_data = extract_pitch(vocal_path)
         
         response = {
             "status": "success",
             "details": {
-                "title": title,
-                "artist": artist,
                 "karaoke_video_id": karaoke_id,
                 "original_video_id": original_id,
                 "pitch_data": pitch_data
@@ -145,7 +126,7 @@ async def add_song(req: SongRequest):
         return response
     except Exception as e:
         # Garante que o arquivo seja deletado mesmo em caso de erro
-        print(f"Erro ao processar o vídeo: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Erro ao processar o vídeo: {str(e)}")
     finally:
         if audio_path and os.path.exists(audio_path):

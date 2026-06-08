@@ -2,7 +2,7 @@ from pathlib import Path
 import subprocess
 import shutil
 
-from audio_utils import convert_to_wav
+from utils.audio_utils import convert_to_wav
 
 
 def extract_vocals(input_path: str) -> str:
@@ -25,7 +25,7 @@ def extract_vocals(input_path: str) -> str:
         shutil.rmtree(demucs_output_dir)
 
     # Executa Demucs
-    subprocess.run(
+    result = subprocess.run(
         [
             "demucs",
             "--two-stems=vocals",
@@ -33,8 +33,13 @@ def extract_vocals(input_path: str) -> str:
             str(demucs_output_dir),
             str(input_file),
         ],
+        capture_output=True,
         check=True,
     )
+    print(result.stdout)
+    print(result.stderr)
+
+    result.check_returncode()
 
     # demucs_output/
     #   htdemucs/

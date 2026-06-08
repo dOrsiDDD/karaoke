@@ -13,3 +13,4 @@ dtw
 python-multipart
 pydub
 demucs
+torchcodec
