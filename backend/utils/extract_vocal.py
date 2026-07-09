@@ -1,64 +1,16 @@
 from pathlib import Path
-import subprocess
-import shutil
 
-from utils.audio_utils import convert_to_wav
+from utils.audio_separator_service import AudioSeparatorService
 
 
 def extract_vocals(input_path: str) -> str:
     """
-    Recebe um arquivo de áudio baixado do YouTube (webm/mp3/m4a/etc),
-    executa separação vocal com Demucs e retorna o caminho para um
-    WAV mono 16 kHz contendo apenas os vocais.
-
-    Retorna:
-        str: caminho do arquivo vocals_16k.wav
+    Recebe um arquivo de áudio baixado e retorna o caminho para um WAV mono 16 kHz
+    contendo apenas os vocais, utilizando a camada de separação configurável.
     """
-
     input_file = Path(input_path)
+    service = AudioSeparatorService()
+    output_dir = input_file.parent / "separator_output"
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Pasta temporária onde o Demucs vai escrever os stems
-    demucs_output_dir = input_file.parent / "demucs_output"
-
-    # Limpa restos de execuções anteriores
-    if demucs_output_dir.exists():
-        shutil.rmtree(demucs_output_dir)
-
-    # Executa Demucs
-    result = subprocess.run(
-        [
-            "demucs",
-            "--two-stems=vocals",
-            "-o",
-            str(demucs_output_dir),
-            str(input_file),
-        ],
-        capture_output=True,
-        check=True,
-    )
-    print(result.stdout)
-    print(result.stderr)
-
-    result.check_returncode()
-
-    # demucs_output/
-    #   htdemucs/
-    #       nome_do_arquivo/
-    #           vocals.wav
-    #           no_vocals.wav
-    #
-
-    model_dir = demucs_output_dir / "htdemucs"
-    song_dir = model_dir / input_file.stem
-
-    vocals_path = song_dir / "vocals.wav"
-
-    if not vocals_path.exists():
-        raise FileNotFoundError(
-            f"Demucs não gerou o arquivo esperado: {vocals_path}"
-        )
-    
-    # Converte para mono 16 kHz
-    final_vocals_path = convert_to_wav(str(vocals_path), channels=1, sr=16000)
-
-    return final_vocals_path
+    return service.separate_vocals(str(input_file), str(output_dir))

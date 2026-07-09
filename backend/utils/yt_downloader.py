@@ -1,15 +1,15 @@
 # backend/utils/youtube_downloader.py
-from yt_dlp import YoutubeDL
 import os
 from fastapi import HTTPException
+import yt_dlp as youtube_dl
 
 def download_audio(url: str) -> str:
     ydl_opts = {
         "format": "bestaudio",
         "outtmpl": "./temp_audios/temp_audio.%(ext)s",
     }
-    
-    with YoutubeDL(ydl_opts) as ydl:
+
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
     
     output_path = './temp_audios/temp_audio.webm'

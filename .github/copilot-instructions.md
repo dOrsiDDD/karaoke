@@ -41,7 +41,7 @@ High-level flow:
 - YouTube tooling: `utils/yt_downloader.py` and `utils/youtube_search.py` depend on `yt-dlp` and the YouTube Data API (env var `YOUTUBE_API_KEY`). `yt_downloader` expects `ffmpeg` at `/usr/bin/ffmpeg` inside Docker; adjust on-host PATH for local runs.
 
 # Typical endpoints & example usages (for tests and quick checks)
-- POST `/analyze` — Form data: `karaoke_video_id` (string) and `user_audio` (file). Returns JSON `{ status, score }`.
+- POST `/analyze` — Form data: `karaokeVideoId` (string) and `user_audio` (file). Returns JSON `{ status, score }`.
 - POST `/add_song` — JSON body: `{ "karaoke_url": "...", "original_url": "..." }`. Downloads original audio, extracts pitch and saves to DB.
 - GET `/songs?q=...` — search stored songs.
 
@@ -58,7 +58,7 @@ High-level flow:
 # Coding agent behavior rules (project-specific)
 - Prefer running and testing changes inside Docker Compose before proposing native-install instructions.
 - Preserve the WAV normalization (mono, 16k) and silence-filtering behavior — breaking this changes scoring semantics.
-- When modifying pitch data storage format, update `database.get_pitch_from_db` read-path AND `scoring.calculate_score` input expectations.
+- When modifying pitch data storage format, update `database.get_pitch_from_db` read-path AND `scoring.CalculateScore` input expectations.
 
 # Quick references (files)
 - Backend entry: `backend/main.py`

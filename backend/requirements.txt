@@ -7,10 +7,9 @@ numpy
 scipy
 python-dotenv
 librosa
+soundfile
 pydantic
 pyworld
-dtw
 python-multipart
-pydub
-demucs
+audio-separator
 torchcodec
