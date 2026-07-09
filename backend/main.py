@@ -1,17 +1,21 @@
+import shutil
+
 from fastapi import FastAPI, UploadFile, HTTPException, File, Form
 from fastapi.responses import JSONResponse
 from pitch_extractor import extract_pitch
-from database import get_pitch_from_db, search_songs, save_song
-import database
-from scoring import calculate_score
-from utils.yt_downloader import download_audio, extract_metadata, progress_hook
-from utils.audio_utils import save_upload_to_temp, convert_to_wav, cleanup_files
+from database import GetSongs, GetSongByVideoId, SaveSong
+from scoring import CalculateScore
+from utils.yt_downloader import download_audio
+from utils.extract_vocal import extract_vocals
+from utils.audio_utils import save_upload_to_temp, convert_to_wav, cleanup_files, build_segments, clean_note_sequence, ConverterFreqParaMidi
 from database import init_db
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+import numpy as np
 from pydantic import BaseModel
 import uvicorn
 import os
+import traceback
 
 app = FastAPI()
 
@@ -27,43 +31,60 @@ app.add_middleware(
 def startup_event():
     init_db()
 
-class SongRequest(BaseModel):
-    karaoke_url: str
-    original_url: str
 
 class OriginalVideoResponse(BaseModel):
     originalVideoId: Optional[str] = None
 
-class ReportRequest(BaseModel):
-    video_id: str
+def pitch_to_midi_and_notes(pitch_hz):
+    midi_float = ConverterFreqParaMidi(pitch_hz)
+    pitch_midi = np.where(
+        np.isfinite(midi_float),
+        np.round(midi_float),
+        -1,
+    ).astype(int)
+    pitch_notes = np.where(pitch_midi >= 0, pitch_midi % 12, -1).astype(int)
+    return pitch_midi, pitch_notes
 
 @app.post("/analyze")
-async def analyze(karaoke_video_id: str = Form(...), user_audio: UploadFile = File(...)):
+async def analyze(karaokeVideoId: str = Form(...), user_audio: UploadFile = File(...)):
     tmp_path = None
     wav_path = None
     try:
-        print(f"[DEBUG] Iniciando análise para vídeo {karaoke_video_id}")
+        print(f"[DEBUG] Iniciando análise para vídeo {karaokeVideoId}")
+
+        if user_audio is None:
+            raise HTTPException(status_code=400, detail="Arquivo de áudio não recebido.")
+
         # 1. Salva upload temporário
         tmp_path = save_upload_to_temp(user_audio)
+        if os.path.getsize(tmp_path) == 0:
+            raise HTTPException(status_code=400, detail="O áudio enviado está vazio.")
         print(f"[DEBUG] Arquivo salvo em: {tmp_path}")
 
         # 2. Converte para wav normalizado
-        wav_path = convert_to_wav(tmp_path)
+        wav_path = convert_to_wav(tmp_path, channels=1, sr=16000)
         print(f"[DEBUG] Arquivo convertido para WAV: {wav_path}")
 
         # 3. Extrai pitches
-        user_pitch = extract_pitch(wav_path)
-        print(f"[DEBUG] Pitch extraído do usuário: {user_pitch[:20]}... (total {len(user_pitch)})")
-        original_pitch = get_pitch_from_db(karaoke_video_id)
-        if original_pitch is None:
-            raise HTTPException(
-            status_code=404,
-            detail="Pitch original não encontrado. Música não cadastrada."
-            )
-        print(f"[DEBUG] Pitch original carregado: {original_pitch[:20]}... (total {len(original_pitch)})")
+        userPitch, userTimestamps = extract_pitch(wav_path)
+        if len(userPitch) == 0 or np.all(userPitch <= 0):
+            raise HTTPException(status_code=400, detail="Não foi possível extrair pitch do áudio enviado.")
+
+        userMidi, userNotes = pitch_to_midi_and_notes(userPitch)
+        userNotes = clean_note_sequence(userNotes)
+        print(f"[DEBUG] Pitch extraído do usuário: {userPitch[:20]}... (total {len(userPitch)})")
+
+        song = GetSongByVideoId(karaokeVideoId)
+        if not song:
+            raise HTTPException(status_code=404, detail="Música não encontrada.")
+
+        originalNotes = song.get("pitch_notes")
+        if originalNotes is None:
+            raise HTTPException(status_code=404, detail="Pitch original não encontrado. Música não cadastrada.")
+        print(f"[DEBUG] Pitch original carregado: {originalNotes[:20]}... (total {len(originalNotes)})")
 
         # 4. Calcula nota
-        score = calculate_score(user_pitch, original_pitch)
+        score = CalculateScore(userNotes, originalNotes)
         print(f"[DEBUG] Score calculado: {score}")
 
         return JSONResponse({
@@ -71,116 +92,104 @@ async def analyze(karaoke_video_id: str = Form(...), user_audio: UploadFile = Fi
             "score": round(score, 2)
         })
 
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        return JSONResponse({
-            "status": "error",
-            "message": str(e)
-        }, status_code=500)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro interno ao processar o áudio: {str(e)}") from e
 
     finally:
         # 5. Limpeza
         cleanup_files(tmp_path, wav_path)
-    
-@app.get("/songs")
-async def search_songs_endpoint(q: str = ""):
+
+@app.get("/song/{karaokeVideoId}")
+async def get_song(karaokeVideoId: str):
+    song = GetSongByVideoId(karaokeVideoId)
+    if not song:
+        raise HTTPException(status_code=404, detail="Música não encontrada.")
+    return song
+
+
+@app.get("/search_song_db")
+async def SearchSongsFromDb(q: str = ""):
     try:
-        results = search_songs(q)
-        return {"results": results}
+        songs = GetSongs(q)
+        return {"songs": songs}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Erro na busca")
-    
+        raise HTTPException(status_code=500, detail="Erro ao buscar músicas no banco de dados")
+
+
 @app.post("/add_song")
-async def add_song(req: SongRequest):
-    karaoke_url = req.karaoke_url
-    original_url = req.original_url
-    audio_path = None
-    karaoke_id = karaoke_url.split('v=')[-1].split('&')[0]
-    original_id = original_url.split('v=')[-1].split('&')[0]
+async def add_song(karaokeVideoId: str = Form(...), title: str = Form(...), query: str = Form(...)):
+    originalSearchQuery = f"{query} intitle:lyrics -karaoke -instrumental"
+    from utils.youtube_search import original_search
+    originalVideoId = original_search(originalSearchQuery).get("originalVideoId")
+    
+    if not originalVideoId:
+        raise HTTPException(status_code=404, detail="Vídeo original não encontrado no YouTube")
+    
+    originalUrl = f"https://www.youtube.com/watch?v={originalVideoId}"
 
-    existing_song = search_songs(karaoke_id)
-    if existing_song:
-        print(f"[DEBUG] Música já cadastrada: {karaoke_id}")
-        return JSONResponse({
-            "status": "exists",
-            "message": "Música já cadastrada",
-            "details": existing_song
-        })
-
+    audioPath = None
+    vocalPath = None
     try:
         # 1. Baixa áudio e extrai metadados
-        audio_path = download_audio(original_url, progress_hook=progress_hook)
-        title, artist = extract_metadata(original_url)
+        audioPath = download_audio(originalUrl)
+
+        #2. Extrai vocais
+        vocalPath = extract_vocals(audioPath)
         
-        # 2. Processa o áudio
-        pitch_data = extract_pitch(audio_path).tolist() # Converte numpy array para lista
-        
-        # 3. Salva no banco de dados
-        save_song(
-            title=title,
-            artist=artist,
-            karaoke_video_id=karaoke_id,
-            original_video_id=original_id,
-            pitch_data=pitch_data 
-        )
+        # 3. Processa o áudio
+        pitchHz, timestamps = extract_pitch(vocalPath)
+        pitchMidi, pitchNotes = pitch_to_midi_and_notes(pitchHz)
+        pitchMidiCleaned = clean_note_sequence(pitchMidi)
+        segments = build_segments(timestamps, pitchMidiCleaned)
+
+        # 4. Salva no banco
+        pitchHzList = pitchHz.tolist()
+        pitchNotesList = pitchNotes.tolist()
+        SaveSong(title, karaokeVideoId, pitchHzList, pitchNotesList, segments)
         
         response = {
             "status": "success",
             "details": {
-                "title": title,
-                "artist": artist,
-                "karaoke_video_id": karaoke_id,
-                "original_video_id": original_id,
-                "pitch_data": pitch_data
+                "karaokeVideoId": karaokeVideoId,
+                "original_video_id": originalVideoId,
+                "pitch_hz": pitchHzList,
+                "pitch_notes": pitchNotesList,
+                "segments": segments
             }
         }
         return response
     except Exception as e:
         # Garante que o arquivo seja deletado mesmo em caso de erro
-        print(f"Erro ao processar o vídeo: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=f"Erro ao processar o vídeo: {str(e)}")
     finally:
-        if audio_path and os.path.exists(audio_path):
-            os.remove(audio_path)
-            print(f"Arquivo temporário {audio_path} removido!")
+        for path in [audioPath, vocalPath]:
+            if not path:
+                continue
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            elif os.path.exists(path):
+                os.remove(path)
 
-@app.get("/karaoke_search")
-async def karaoke_search_endpoint(q: str):
+        if vocalPath:
+            parent_dir = os.path.dirname(vocalPath)
+            if parent_dir and os.path.isdir(parent_dir):
+                shutil.rmtree(parent_dir, ignore_errors=True)
+
+@app.get("/karaoke_yt_search")
+async def KaraokeYoutubeSearch(q: str):
     from utils.youtube_search import karaoke_search
     try:
         results = karaoke_search(q)
         return {"results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Erro na busca no YouTube")
-    
-@app.get("/original_search")
-async def original_search_endpoint(q: str) -> OriginalVideoResponse:
-    from utils.youtube_search import original_search
-    try:
-        result = original_search(q)
-        if result and "originalVideoId" in result:
-            return OriginalVideoResponse(originalVideoId=result["originalVideoId"])
-        else:
-            return OriginalVideoResponse(originalVideoId=None)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Erro na busca do vídeo original no YouTube")
-    
-
-@app.post("/report_bad_video")
-async def report_bad_video(req: ReportRequest):
-    """
-    Endpoint para um cliente reportar um vídeo que não funciona.
-    O vídeo é adicionado a uma blocklist no banco de dados.
-    """
-    try:
-        database.add_blocked_video(
-            video_id=req.video_id,
-        )
-        return {"status": "success", "message": "Video reportado e bloqueado."}
-    except Exception as e:
-        # Captura qualquer erro de banco de dados e retorna uma resposta adequada
-        raise HTTPException(status_code=500, detail=f"Erro ao reportar vídeo: {e}")
-
-
+        
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

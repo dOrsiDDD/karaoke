@@ -16,7 +16,7 @@ const props = defineProps({
 
 async function removeSong(song) {
   const index = props.songs.findIndex(
-    queuedSong => queuedSong.karaoke_video_id === song.karaoke_video_id
+    queuedSong => queuedSong.karaokeVideoId === song.karaokeVideoId
   )
 
   if (index === 0) {

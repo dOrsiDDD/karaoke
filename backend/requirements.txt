@@ -2,13 +2,14 @@ fastapi
 uvicorn[standard]
 psycopg2-binary
 sqlalchemy
-yt-dlp @ git+https://github.com/bashonly/yt-dlp.git@sabr
+yt-dlp>=2026.01.01
 numpy
 scipy
 python-dotenv
 librosa
+soundfile
 pydantic
 pyworld
-dtw
 python-multipart
-pydub
+audio-separator
+torchcodec

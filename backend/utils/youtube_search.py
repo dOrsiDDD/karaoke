@@ -1,5 +1,4 @@
 import requests
-import database
 from dotenv import load_dotenv
 from fastapi import HTTPException
 import os
@@ -8,7 +7,6 @@ load_dotenv()
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY") 
 
 def karaoke_search (query):
-    blocked_ids = set(database.get_blocked_ids())
     queryKaraoke = f"{query} intitle:karaoke -part -cover"
     paramsKaraoke = {
         "part": "snippet",
@@ -37,24 +35,12 @@ def karaoke_search (query):
 
     for item in items:
         video_id = item["id"].get("videoId")
-        if not video_id:
-            continue
-        if video_id in blocked_ids:
-            continue
-         
         title = item["snippet"]["title"]
-        artist = None
-
-        if "-" in title:
-            parts = title.split("-")
-            artist = parts[0].strip()
-            title = parts[-1].strip()
 
         results.append({
              "query": query,
              "karaokeVideoId": video_id,
              "title": title,
-             "artist": artist
         })
 
     print("[DEBUG] Retornando para frontend:", results)
