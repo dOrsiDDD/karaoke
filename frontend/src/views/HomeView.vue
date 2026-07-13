@@ -1,7 +1,7 @@
 <template>
   <div class="main-container">
     <header>
-      <h1>Diegoke</h1>
+      <h1>Karaoke</h1>
       <div class="menu-icon">☰</div>
     </header>
 
@@ -30,11 +30,36 @@
             </div>
           </div>
 
+          <div class="sync-toggle" v-if="currentSong">
+            <label>
+              <input type="checkbox" v-model="showSyncControls" />
+              Ajustar sincronia
+            </label>
+          </div>
+
+          <div class="sync-panel" v-if="currentSong && showSyncControls">
+            <h2>Ajuste de Sincronia</h2>
+            <div class="sync-controls">
+              <input
+                type="range"
+                min="-10"
+                max="10"
+                step="0.1"
+                v-model.number="syncOffset"
+              />
+              <span>{{ syncOffset.toFixed(1) }}s</span>
+            </div>
+            <button :disabled="savingSync" @click="saveSyncOffset">
+              {{ savingSync ? 'Salvando...' : syncMessage || 'Salvar Sincronia' }}
+            </button>
+          </div>
+
           <PitchFeedbackBar
             v-if="currentVideoId"
             :segments="segments"
             :current-time="currentTime"
             :user-midi="userMidi"
+            :sync-offset="syncOffset"
           />
         </div>
 
@@ -49,22 +74,26 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import YoutubePlayer from '../components/YoutubePlayer.vue'
 import SearchSidebar from '../components/SearchSidebar.vue'
 import ResultsOverlay from '../components/ResultsOverlay.vue'
 import PitchFeedbackBar from '../components/PitchFeedbackBar.vue'
 import { useAudioRecording } from '../composables/useAudioRecording'
 import { useSongQueue } from '../composables/useSongQueue'
-import { analyzeRecording } from '../composables/useKaraokeApi'
+import { analyzeRecording, saveSongSyncOffset } from '../composables/useKaraokeApi'
 
 const { userMidi, start, pause, resume, stop, reset } = useAudioRecording()
-const { currentVideoId, upNext, segments, addSong, advanceQueue } = useSongQueue()
+const { currentVideoId, currentSong, upNext, segments, addSong, advanceQueue } = useSongQueue()
 
 const currentTime = ref(0)
 const showResultsOverlay = ref(false)
 const isScoring = ref(false)
 const score = ref(null)
+const showSyncControls = ref(false)
+const syncOffset = ref(0)
+const savingSync = ref(false)
+const syncMessage = ref('')
 
 async function onAddSong(song) {
   await addSong(song)
@@ -90,6 +119,30 @@ async function closeResults() {
   currentTime.value = 0
   await advanceQueue()
 }
+
+async function saveSyncOffset() {
+  if (!currentVideoId.value) return
+  savingSync.value = true
+  syncMessage.value = ''
+
+  try {
+    await saveSongSyncOffset(currentVideoId.value, syncOffset.value)
+    syncMessage.value = 'Salvo!'
+    setTimeout(() => {
+      if (syncMessage.value === 'Salvo!') syncMessage.value = ''
+    }, 2000)
+  } catch (err) {
+    console.error('Erro ao salvar sincronia:', err)
+    syncMessage.value = 'Erro ao salvar'
+  } finally {
+    savingSync.value = false
+  }
+}
+
+watch(currentSong, (song) => {
+  syncOffset.value = Number(song?.syncOffset ?? 0)
+  showSyncControls.value = false
+})
 
 async function runAnalysis(blob) {
   isScoring.value = true
@@ -163,5 +216,46 @@ header h1 {
   justify-content: center;
   color: #c77dff;
   font-size: 1.5rem;
+}
+
+.sync-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  max-width: 420px;
+}
+
+.sync-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  color: #c7f1ff;
+}
+
+.sync-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.sync-controls input[type='range'] {
+  flex: 1;
+}
+
+.sync-panel button {
+  background: #00c6ff;
+  color: #08101d;
+  border: none;
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.sync-panel button:disabled {
+  background: #6c7a89;
+  cursor: not-allowed;
 }
 </style>

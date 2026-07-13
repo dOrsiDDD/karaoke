@@ -10,15 +10,16 @@ from utils.audio_utils import convert_to_wav
 logger = logging.getLogger(__name__)
 
 try:
-    from audio_separator import Separator
-except ImportError:  # pragma: no cover - fallback for environments without the package
-    Separator = None
+    from audio_separator.separator import Separator
+except Exception as e:
+    logger.exception("Failed to import audio_separator")
+    raise
 
 
-def create_separator(model_name: str, **kwargs):
+def create_separator(**kwargs):
     if Separator is None:
         raise RuntimeError("audio-separator is not installed")
-    return Separator(model_name=model_name, **kwargs)
+    return Separator(**kwargs)
 
 
 class AudioSeparatorService:
@@ -30,26 +31,31 @@ class AudioSeparatorService:
         temp_dir.mkdir(parents=True, exist_ok=True)
 
         models_to_try = [self.config.default_model]
-        for fallback in self.config.fallback_models:
-            if fallback.enabled and fallback.name not in models_to_try:
-                models_to_try.append(fallback.name)
+        models_to_try.extend(
+            sorted(
+                (m for m in self.config.fallback_models if m.enabled),
+                key=lambda m: m.priority,
+            )
+        )
 
-        last_error: Optional[Exception] = None
-        for model_name in models_to_try:
+        for model in models_to_try:
             try:
-                logger.info("Starting audio separation with model %s", model_name)
-                start_time = time.perf_counter()
-                separator_kwargs = {}
-                for fallback in self.config.fallback_models:
-                    if fallback.name == model_name:
-                        separator_kwargs = dict(fallback.kwargs or {})
-                        break
+                logger.info("Starting audio separation with model %s", model.name)
 
-                separator_kwargs.pop("model_name", None)
-                separator = create_separator(model_name=model_name, **separator_kwargs)
-                result = separator.separate(input_path=input_path, output_dir=str(temp_dir))
+                start_time = time.perf_counter()
+
+                separator = create_separator(
+                    model_file_dir="/models",
+                    output_dir=str(temp_dir),
+                    output_format=self.config.output_format.upper())
+
+                separator.load_model(model.filename)
+
+                wav_path = convert_to_wav(input_path, channels=2, sr=44100)
+
+                separator.separate(wav_path)
                 duration = time.perf_counter() - start_time
-                logger.info("Separation completed for %s in %.2fs -> %s", model_name, duration, result)
+                logger.info("Separation completed for %s in %.2fs", model.name, duration)
 
                 vocals_path = self._find_vocals_file(temp_dir)
                 if not vocals_path:
@@ -59,7 +65,7 @@ class AudioSeparatorService:
                 return final_path
             except Exception as exc:  # pragma: no cover - exercised via fallback logic
                 last_error = exc
-                logger.exception("Separation failed for model %s", model_name)
+                logger.exception("Separation failed for model %s", model.name)
 
         raise RuntimeError(f"All separator models failed. Last error: {last_error}")
 

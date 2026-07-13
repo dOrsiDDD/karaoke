@@ -1,19 +1,38 @@
 <template>
   <div class="pitch-bar" v-if="segments.length">
     <div ref="viewportRef" class="pitch-viewport">
-      
+
       <div class="playhead-line" :style="{ left: `${centerX}px` }" />
 
-      <div
-        v-for="(seg, i) in visibleSegments"
-        :key="i"
-        class="note-line"
-        :style="segmentStyle(seg)"
-      />
+      <svg
+        v-if="melodyPath"
+        class="melody-svg"
+        xmlns="http://www.w3.org/2000/svg"
+        :width="viewportWidth"
+        :height="viewportHeight"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="melodyGradient" x1="0" x2="1">
+            <stop offset="0%" stop-color="#00c6ff" />
+            <stop offset="100%" stop-color="#0072ff" />
+          </linearGradient>
+        </defs>
+
+        <path
+          :d="melodyPath"
+          class="melody-path"
+          fill="none"
+          :stroke="pathStroke"
+          stroke-width="6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
 
       <div
         class="user-ball"
-        :class="{ silent: !isVoiced || userMidi == null }"
+        :class="{ silent: !isVoiced || userMidi == null, 'hit-glow': isHittingNote }"
         :style="userBallStyle"
       />
     </div>
@@ -31,26 +50,41 @@ const props = defineProps({
   currentTime: { type: Number, default: 0 },
   userMidi: { type: Number, default: null },
   isVoiced: { type: Boolean, default: false },
+  syncOffset: { type: Number, default: 0 },
 })
 
 const WINDOW_SEC = 6 // Quantos segundos de música aparecem na tela
 const viewportRef = ref(null)
 const viewportWidth = ref(600)
+const viewportHeight = ref(220)
 
 const pxPerSec = computed(() => viewportWidth.value / WINDOW_SEC)
 const centerX = computed(() => viewportWidth.value / 2)
 
-// --- LIMITES DINÂMICOS DA MÚSICA ---
-// Encontra a nota mais baixa da música e dá uma margem de 3 semitons para o fundo
-const MIN_MIDI = computed(() => {
-  if (!props.segments.length) return 50
-  return Math.min(...props.segments.map(s => s.note)) - 3
+// --- FILTRO DE DURAÇÃO (Noise Reduction) ---
+// Remove segmentos muito curtos (ex.: ruído)
+const cleanedSegments = computed(() => {
+  return props.segments.filter((s) => (s.end - s.start) >= 0.15)
 })
 
-// Encontra a nota mais alta da música e dá uma margem de 3 semitons para o topo
+// Aplica ajuste de sincronia ao desenho da melodia
+const syncedSegments = computed(() => {
+  return cleanedSegments.value.map((seg) => ({
+    ...seg,
+    start: seg.start + props.syncOffset,
+    end: seg.end + props.syncOffset,
+  }))
+})
+
+// --- LIMITES DINÂMICOS DA MÚSICA (usando cleanedSegments) ---
+const MIN_MIDI = computed(() => {
+  if (!cleanedSegments.value.length) return 50
+  return Math.min(...cleanedSegments.value.map((s) => s.note)) - 3
+})
+
 const MAX_MIDI = computed(() => {
-  if (!props.segments.length) return 80
-  return Math.max(...props.segments.map(s => s.note)) + 3
+  if (!cleanedSegments.value.length) return 80
+  return Math.max(...cleanedSegments.value.map((s) => s.note)) + 3
 })
 
 const midiRange = computed(() => {
@@ -58,48 +92,99 @@ const midiRange = computed(() => {
   return range <= 0 ? 1 : range
 })
 
-// Converte qualquer valor MIDI (inteiro ou decimal de crescendo) em posição Y (0% a 100%)
+// Converte MIDI para posição Y em porcentagem (0% topo, 100% fundo)
 function midiToY(midi) {
-  if (midi == null) return 50 // Centraliza por padrão caso nulo
-  // Clampeia para o valor não sair voando para fora da caixa do componente
+  if (midi == null) return 50
   const clamped = Math.max(MIN_MIDI.value, Math.min(MAX_MIDI.value, midi))
-  // Inverte o cálculo porque no CSS, Top: 0% é o topo e 100% é o fundo
   return ((MAX_MIDI.value - clamped) / midiRange.value) * 100
 }
 
-// Filtra apenas os segmentos de nota que devem aparecer na janela de tempo atual
+// Converte MIDI para Y em pixels (para usar no SVG)
+function midiToYPx(midi) {
+  const pct = midiToY(midi)
+  return (pct / 100) * viewportHeight.value
+}
+
+// Segments visíveis na janela atual (baseado em syncedSegments)
 const visibleSegments = computed(() => {
   const half = WINDOW_SEC / 2
   const t0 = props.currentTime - half
   const t1 = props.currentTime + half
-  return props.segments.filter((s) => s.end > t0 && s.start < t1)
+  return syncedSegments.value.filter((s) => s.end > t0 && s.start < t1)
 })
 
-// Estiliza as linhas da música (As notas que o usuário deve acertar)
-function segmentStyle(seg) {
-  const left = centerX.value + (seg.start - props.currentTime) * pxPerSec.value
-  const width = Math.max((seg.end - seg.start) * pxPerSec.value, 2)
-  const top = midiToY(seg.note)
+// Path SVG que desenha notas como linhas horizontais e conecta notas
+const melodyPath = computed(() => {
+  const segs = visibleSegments.value
+  if (!segs.length) return ''
 
-  return {
-    left: `${left}px`,
-    width: `${width}px`,
-    top: `${top}%`,
+  const MAX_CONNECT_GAP = 0.3 // segundos
+  const parts = []
+
+  for (let i = 0; i < segs.length; i++) {
+    const seg = segs[i]
+    const x1 = centerX.value + (seg.start - props.currentTime) * pxPerSec.value
+    const x2 = centerX.value + (seg.end - props.currentTime) * pxPerSec.value
+    const y = midiToYPx(seg.note)
+
+    const gapFromPrev = i > 0 ? seg.start - segs[i - 1].end : Infinity
+
+    // Começa nova frase (levanta a caneta) se for a primeira nota
+    // ou se o gap desde a nota anterior for maior que MAX_CONNECT_GAP
+    if (i === 0 || gapFromPrev > MAX_CONNECT_GAP) {
+      parts.push(`M ${x1.toFixed(2)} ${y.toFixed(2)}`)
+    }
+
+    // Linha horizontal da própria nota (start -> end)
+    parts.push(`L ${x2.toFixed(2)} ${y.toFixed(2)}`)
+
+    // Decide se conecta ao início da próxima nota (slide) com base no gap
+    const next = segs[i + 1]
+    if (next) {
+      const gapToNext = next.start - seg.end
+      if (gapToNext <= MAX_CONNECT_GAP) {
+        const nx1 = centerX.value + (next.start - props.currentTime) * pxPerSec.value
+        const ny = midiToYPx(next.note)
+        parts.push(`L ${nx1.toFixed(2)} ${ny.toFixed(2)}`)
+      }
+      // Se gapToNext > MAX_CONNECT_GAP -> não conectar (próxima iteração emitirá `M`)
+    }
   }
-}
 
-// Estiliza a bolinha do usuário (Fixa em X no centro, flutua em Y)
+  return parts.join(' ')
+})
+
+// Bolinha do usuário posicionada em pixels sobre o SVG
 const userBallStyle = computed(() => {
-  const top = midiToY(props.userMidi)
+  const topPx = midiToYPx(props.userMidi)
   return {
     left: `${centerX.value}px`,
-    top: `${top}%`,
+    top: `${topPx}px`,
   }
 })
 
-// Monitoramento da largura do componente para manter o centro perfeito
+// Verifica se o usuário está no intervalo de uma nota visível e na margem de tolerância
+const isHittingNote = computed(() => {
+  if (!props.isVoiced || props.userMidi == null) return false
+
+  const current = visibleSegments.value.find((seg) => {
+    return props.currentTime >= seg.start && props.currentTime <= seg.end
+  })
+
+  if (!current) return false
+  return Math.abs(props.userMidi - current.note) <= 1
+})
+
+const pathStroke = computed(() => {
+  return isHittingNote.value ? '#4ade80' : 'url(#melodyGradient)'
+})
+
+// Monitoramento da largura/altura do componente para manter o centro perfeito
 function updateWidth() {
-  if (viewportRef.value) viewportWidth.value = viewportRef.value.clientWidth
+  if (viewportRef.value) {
+    viewportWidth.value = viewportRef.value.clientWidth
+    viewportHeight.value = viewportRef.value.clientHeight
+  }
 }
 
 let resizeObserver
@@ -150,6 +235,19 @@ watch(() => props.segments, updateWidth)
   transition: background 0.3s;
 }
 
+.melody-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.melody-path {
+  filter: drop-shadow(0 0 8px rgba(0, 114, 255, 0.45));
+}
+
 /* A bolinha do cantor */
 .user-ball {
   position: absolute;
@@ -162,8 +260,15 @@ watch(() => props.segments, updateWidth)
   box-shadow: 0 0 12px #ff0055, 0 0 4px #ff0055;
   z-index: 10;
   /* Transição ultra curta em CSS para suavizar pequenas variações do hardware */
-  transition: top 0.04s linear, opacity 0.2s ease;
+  transition: top 0.04s linear, opacity 0.2s ease, transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   opacity: 1;
+}
+
+.user-ball.hit-glow {
+  background: #4ade80;
+  border-color: #86efac;
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.9), 0 0 28px rgba(74, 222, 128, 0.35);
+  transform: translate(-50%, -50%) scale(1.2);
 }
 
 /* Quando o usuário fica em silêncio, a bolinha apaga suavemente e fica cinza */

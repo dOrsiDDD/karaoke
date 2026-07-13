@@ -40,8 +40,15 @@ def init_db():
                 karaoke_video_id TEXT UNIQUE,
                 pitch_hz JSONB,
                 pitch_notes JSONB,
-                segments JSONB
+                segments JSONB,
+                sync_offset FLOAT DEFAULT 0.0
             )
+            """
+        )
+        cursor.execute(
+            """
+            ALTER TABLE songs
+            ADD COLUMN IF NOT EXISTS sync_offset FLOAT DEFAULT 0.0
             """
         )
         conn.commit()
@@ -76,7 +83,7 @@ def GetSongs(query: str):
     try:
         cursor.execute(
             """
-            SELECT title, karaoke_video_id, pitch_notes, segments FROM songs
+            SELECT title, karaoke_video_id, pitch_notes, segments, sync_offset FROM songs
             WHERE title ILIKE %s OR karaoke_video_id ILIKE %s
             """,
             (f"%{query}%", f"%{query}%"),
@@ -88,6 +95,7 @@ def GetSongs(query: str):
                 "karaokeVideoId": row[1],
                 "pitch_notes": row[2],
                 "segments": row[3],
+                "syncOffset": row[4] if row[4] is not None else 0,
             }
             for row in cursor.fetchall()
         ]
@@ -102,7 +110,7 @@ def GetSongByVideoId(karaokeVideoId: str):
     try:
         cursor.execute(
             """
-            SELECT title, karaoke_video_id, pitch_notes, segments FROM songs
+            SELECT title, karaoke_video_id, pitch_notes, segments, sync_offset FROM songs
             WHERE karaoke_video_id = %s
             """,
             (karaokeVideoId,),
@@ -120,4 +128,23 @@ def GetSongByVideoId(karaokeVideoId: str):
         "karaokeVideoId": row[1],
         "pitch_notes": row[2],
         "segments": row[3],
+        "syncOffset": row[4] if row[4] is not None else 0,
     }
+
+
+def UpdateSongSyncOffset(karaokeVideoId, sync_offset):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            UPDATE songs
+            SET sync_offset = %s
+            WHERE karaoke_video_id = %s
+            """,
+            (sync_offset, karaokeVideoId),
+        )
+        conn.commit()
+    finally:
+        cursor.close()
+        conn.close()

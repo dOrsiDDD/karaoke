@@ -12,4 +12,5 @@ pydantic
 pyworld
 python-multipart
 audio-separator
+onnxruntime
 torchcodec
