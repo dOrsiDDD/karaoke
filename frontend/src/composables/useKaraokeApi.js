@@ -29,7 +29,23 @@ export async function fetchSongSegments(karaokeVideoId) {
   const res = await fetch(`${API_BASE}/song/${karaokeVideoId}`)
   if (!res.ok) return null
   const data = await res.json()
-  return data.segments ?? null
+  return {
+    segments: data.segments ?? null,
+    syncOffset: data.syncOffset ?? 0,
+  }
+}
+
+export async function saveSongSyncOffset(karaokeVideoId, syncOffset) {
+  const res = await fetch(`${API_BASE}/song/${karaokeVideoId}/sync`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ syncOffset }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.detail ?? data.message ?? 'Erro ao salvar sincronia')
+  return data
 }
 
 export async function analyzeRecording(karaokeVideoId, blob) {

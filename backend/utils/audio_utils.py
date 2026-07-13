@@ -1,4 +1,6 @@
 import os
+import shutil
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -158,6 +160,43 @@ def save_upload_to_temp(upload_file) -> str:
     tmp.close()
     return tmp.name
 
+def _ffmpeg_available() -> str:
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        raise RuntimeError(
+            "ffmpeg is required to convert unsupported audio formats but was not found on PATH"
+        )
+    return ffmpeg
+
+
+def _convert_with_ffmpeg(
+    input_path: str,
+    output_path: str,
+    channels: int | None = None,
+    sr: int | None = None,
+) -> str:
+    ffmpeg = _ffmpeg_available()
+    cmd = [ffmpeg, "-y", "-i", input_path]
+    if channels is not None:
+        cmd += ["-ac", str(channels)]
+    if sr is not None:
+        cmd += ["-ar", str(sr)]
+    cmd += [output_path]
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.decode(errors="ignore") if exc.stderr else ""
+        raise RuntimeError(
+            f"ffmpeg conversion failed for {input_path}: {stderr}"
+        ) from exc
+
+    if not Path(output_path).exists():
+        raise RuntimeError(f"ffmpeg conversion did not produce {output_path}")
+
+    return output_path
+
+
 def convert_to_wav(input_path: str, channels: int | None = None, sr: int | None = None) -> str:
     """
     Converte qualquer formato suportado para WAV mono/16k quando necessário.
@@ -169,9 +208,8 @@ def convert_to_wav(input_path: str, channels: int | None = None, sr: int | None 
     try:
         data, file_sr = sf.read(input_path, dtype="float32")
     except Exception:
-        if Path(input_path).suffix.lower() == ".wav":
-            return input_path
-        raise
+        wav_path = str(Path(input_path).with_suffix(".wav"))
+        return _convert_with_ffmpeg(input_path, wav_path, channels, sr)
 
     if data.ndim > 1:
         if channels is not None and channels == 1:
@@ -185,7 +223,7 @@ def convert_to_wav(input_path: str, channels: int | None = None, sr: int | None 
     if channels is not None and channels == 1 and data.ndim > 1:
         data = np.mean(data, axis=1)
 
-    wav_path = input_path if Path(input_path).suffix.lower() == ".wav" else input_path + ".wav"
+    wav_path = input_path if Path(input_path).suffix.lower() == ".wav" else str(Path(input_path).with_suffix(".wav"))
     sf.write(wav_path, data, sr or file_sr)
 
     return wav_path

@@ -71,4 +71,4 @@ def CalculateScore(userNotes, originalNotes, pitchWeight=0.7, rhythmWeight=0.3, 
     rhythmScore = np.mean(rhythmFrameScores) * 100 if rhythmFrameScores.size else 0.0
 
     finalScore = pitchWeight * pitchScore + rhythmWeight * rhythmScore
-    return float(np.clip(finalScore, 0, 100))
+    return int(np.clip(finalScore, 0, 100))

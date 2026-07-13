@@ -1,9 +1,9 @@
 import shutil
 
-from fastapi import FastAPI, UploadFile, HTTPException, File, Form
+from fastapi import FastAPI, UploadFile, HTTPException, File, Form, Body
 from fastapi.responses import JSONResponse
 from pitch_extractor import extract_pitch
-from database import GetSongs, GetSongByVideoId, SaveSong
+from database import GetSongs, GetSongByVideoId, SaveSong, UpdateSongSyncOffset
 from scoring import CalculateScore
 from utils.yt_downloader import download_audio
 from utils.extract_vocal import extract_vocals
@@ -34,6 +34,9 @@ def startup_event():
 
 class OriginalVideoResponse(BaseModel):
     originalVideoId: Optional[str] = None
+
+class SyncOffsetPayload(BaseModel):
+    syncOffset: float
 
 def pitch_to_midi_and_notes(pitch_hz):
     midi_float = ConverterFreqParaMidi(pitch_hz)
@@ -110,6 +113,21 @@ async def get_song(karaokeVideoId: str):
     if not song:
         raise HTTPException(status_code=404, detail="Música não encontrada.")
     return song
+
+
+@app.patch("/song/{karaokeVideoId}/sync")
+async def patch_song_sync(karaokeVideoId: str, payload: SyncOffsetPayload = Body(...)):
+    song = GetSongByVideoId(karaokeVideoId)
+    if not song:
+        raise HTTPException(status_code=404, detail="Música não encontrada.")
+
+    try:
+        UpdateSongSyncOffset(karaokeVideoId, payload.syncOffset)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Erro ao atualizar sync offset: {str(e)}") from e
+
+    return JSONResponse({"status": "success", "syncOffset": payload.syncOffset})
 
 
 @app.get("/search_song_db")

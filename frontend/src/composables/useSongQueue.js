@@ -3,12 +3,18 @@ import { addSongToBackend, fetchSongSegments } from './useKaraokeApi'
 
 export function useSongQueue() {
   const currentVideoId = ref(null)
+  const currentSong = ref(null)
   const upNext = ref([])
   const segments = ref([])
 
   async function prepareSongItem(item) {
+    if (!item.syncOffset && item.syncOffset !== 0) {
+      item.syncOffset = 0
+    }
+
     if (item.segments) {
       segments.value = item.segments
+      currentSong.value = item
       return
     }
 
@@ -16,14 +22,18 @@ export function useSongQueue() {
       const data = await item.addPromise
       if (data?.details?.segments) {
         item.segments = data.details.segments
-        segments.value = data.details.segments
+        item.syncOffset = data.details.syncOffset ?? 0
+        segments.value = item.segments
+        currentSong.value = item
         return
       }
     }
 
-    const fetchedSegments = await fetchSongSegments(item.karaokeVideoId)
-    item.segments = fetchedSegments ?? []
+    const fetched = await fetchSongSegments(item.karaokeVideoId)
+    item.segments = fetched?.segments ?? []
+    item.syncOffset = Number(fetched?.syncOffset ?? 0)
     segments.value = item.segments
+    currentSong.value = item
   }
 
   async function addSong(song) {
@@ -33,6 +43,7 @@ export function useSongQueue() {
       karaokeVideoId: karaokeVideoId,
       query: song.query,
       segments: song.segments ?? null,
+      syncOffset: song.syncOffset ?? 0,
       addPromise: null,
       isCatalogSong: song.source === 'catalog',
     }
@@ -65,11 +76,13 @@ export function useSongQueue() {
       await prepareSongItem(next)
     } else {
       segments.value = []
+      currentSong.value = null
     }
   }
 
   return {
     currentVideoId,
+    currentSong,
     upNext,
     segments,
     addSong,
