@@ -73,7 +73,7 @@ async function removeSong(song) {
 }
 
 .queue-empty {
-  min-height: 180px;
+  min-height: 140px;
   padding: 1.25rem;
   border: 1px dashed rgba(255, 255, 255, 0.18);
   border-radius: 0.9rem;
