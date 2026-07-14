@@ -1,45 +1,52 @@
 @import './base.css';
 
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
-}
+:root {
+  --bg-main: #2b0054;
+  --bg-dark: #09000f;
+  --bg-card: #240044;
+  --bg-card-soft: #310063;
 
-a,
-.green {
-  text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
+  --purple: #c77dff;
+  --purple-soft: #e5c7ff;
+  --pink: #ff4fa3;
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
+  --text-main: #f8edff;
+  --text-muted: #c9a9df;
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
+  --border-soft: rgba(255, 255, 255, 0.10);
 }
 
 html,
-body {
+body,
+#app {
+  width: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
-  height: 100%;
-  background: #3a0073;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(199, 125, 255, 0.18), transparent 32%),
+    linear-gradient(180deg, #4b008f 0%, #2b0054 42%, #1a0033 100%);
+  color: var(--text-main);
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 * {
