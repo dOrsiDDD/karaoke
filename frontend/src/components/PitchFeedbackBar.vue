@@ -24,7 +24,7 @@
           class="melody-path"
           fill="none"
           :stroke="pathStroke"
-          stroke-width="6"
+          stroke-width="5"
           stroke-linecap="round"
           stroke-linejoin="round"
         />
@@ -56,7 +56,7 @@ const props = defineProps({
 const WINDOW_SEC = 6 // Quantos segundos de música aparecem na tela
 const viewportRef = ref(null)
 const viewportWidth = ref(600)
-const viewportHeight = ref(220)
+const viewportHeight = ref(140)
 
 const pxPerSec = computed(() => viewportWidth.value / WINDOW_SEC)
 const centerX = computed(() => viewportWidth.value / 2)
@@ -204,7 +204,7 @@ watch(() => props.segments, updateWidth)
 <style scoped>
 .pitch-viewport {
   position: relative;
-  height: 220px; /* Altura fixa ideal para a pista do jogo */
+  height: 140px; /* Altura fixa ideal para a pista do jogo */
   background: #121212;
   border: 2px solid #2a2a2a;
   border-radius: 8px;
@@ -283,7 +283,7 @@ watch(() => props.segments, updateWidth)
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 220px;
+  height: 140px;
   color: #888;
   font-family: sans-serif;
   background: #121212;

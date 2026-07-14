@@ -162,18 +162,22 @@ async function runAnalysis(blob) {
 
 <style scoped>
 .main-container {
-  background: linear-gradient(180deg, #5b01afd8, #3a0073);
-  padding: 1rem;
-  font-family: sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(199, 125, 255, 0.24), transparent 34%),
+    linear-gradient(180deg, #4b008f, #260047);
+  padding: 0.75rem 1rem 1rem;
+  font-family: Inter, system-ui, sans-serif;
   color: #f3e8ff;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 50px;
+  height: 42px;
+  margin-bottom: 0.75rem;
 }
 
 header h1 {
@@ -189,23 +193,27 @@ header h1 {
 
 .layout {
   display: grid;
-  grid-template-columns: 3fr 1.2fr;
-  gap: 1rem;
-  height: calc(100vh - 100px);
+  grid-template-columns: minmax(0, 3.7fr) minmax(280px, 1fr);
+  gap: 0.85rem;
+  height: calc(100vh - 68px);
 }
 
 .player-section {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  gap: 0.65rem;
 }
 
 .player-wrapper {
   flex: 1;
   min-height: 0;
-  background: #2a004d;
-  border-radius: 0.75rem;
+  background: #09000f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
   overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
 }
 
 .player-placeholder {

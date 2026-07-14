@@ -44,6 +44,7 @@
   </div>
 </template>
 
+<script setup>
 const emits = defineEmits(['remove-first-song'])
 
 const props = defineProps({

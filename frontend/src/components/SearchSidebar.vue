@@ -98,7 +98,7 @@ function addSong(song) {
 }
 
 .search-area {
-  padding: 1rem;
+  padding: 0.85remrem;
   border-radius: 0.75rem;
   background: #2a004d;
   color: #000000;
@@ -186,8 +186,9 @@ function addSong(song) {
 }
 
 .queue-section {
-  padding: 1rem;
+  padding: 0.85rem;
   border-radius: 0.75rem;
+  overflow: hidden;
   flex: 1;
   background: #2a004d;
 }
