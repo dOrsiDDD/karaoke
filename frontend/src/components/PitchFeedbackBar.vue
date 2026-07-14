@@ -24,7 +24,7 @@
           class="melody-path"
           fill="none"
           :stroke="pathStroke"
-          stroke-width="6"
+          stroke-width="5"
           stroke-linecap="round"
           stroke-linejoin="round"
         />
@@ -56,7 +56,7 @@ const props = defineProps({
 const WINDOW_SEC = 6 // Quantos segundos de música aparecem na tela
 const viewportRef = ref(null)
 const viewportWidth = ref(600)
-const viewportHeight = ref(220)
+const viewportHeight = ref(140)
 
 const pxPerSec = computed(() => viewportWidth.value / WINDOW_SEC)
 const centerX = computed(() => viewportWidth.value / 2)

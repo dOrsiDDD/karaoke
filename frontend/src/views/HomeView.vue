@@ -162,60 +162,110 @@ async function runAnalysis(blob) {
 
 <style scoped>
 .main-container {
-  background: linear-gradient(180deg, #5b01afd8, #3a0073);
-  padding: 1rem;
-  font-family: sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(199, 125, 255, 0.24), transparent 34%),
+    linear-gradient(180deg, #4b008f, #260047);
+  padding: 0.75rem 1rem 1rem;
+  font-family: Inter, system-ui, sans-serif;
   color: #f3e8ff;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 50px;
+  height: 44px;
+  margin-bottom: 0.75rem;
 }
 
 header h1 {
   color: #f0c3ff;
   margin: 0;
+  font-size: clamp(1.7rem, 2vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .menu-icon {
-  font-size: 1.5rem;
-  color: #8a078f;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 1.35rem;
+  color: #d8b4fe;
   cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.menu-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.content {
+  height: calc(100vh - 60px);
 }
 
 .layout {
   display: grid;
-  grid-template-columns: 3fr 1.2fr;
-  gap: 1rem;
-  height: calc(100vh - 100px);
+  grid-template-columns: minmax(0, 3.9fr) minmax(320px, 1fr);
+  gap: 0.9rem;
+  height: 100%;
 }
 
 .player-section {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
+  gap: 0.65rem;
 }
 
 .player-wrapper {
   flex: 1;
   min-height: 0;
-  background: #2a004d;
-  border-radius: 0.75rem;
+  background: #09000f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
   overflow: hidden;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
 }
 
 .player-placeholder {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #c77dff;
-  font-size: 1.5rem;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  color: #d8b4fe;
+  font-size: clamp(1.2rem, 1.6vw, 1.8rem);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .main-container {
+    overflow: auto;
+  }
+
+  .content {
+    height: auto;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .player-wrapper {
+    min-height: 420px;
+  }
 }
 
 .sync-panel {
