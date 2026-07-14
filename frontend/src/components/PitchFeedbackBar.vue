@@ -204,7 +204,7 @@ watch(() => props.segments, updateWidth)
 <style scoped>
 .pitch-viewport {
   position: relative;
-  height: 220px; /* Altura fixa ideal para a pista do jogo */
+  height: 140px; /* Altura mais compacta para dar mais espaço ao vídeo */
   background: #121212;
   border: 2px solid #2a2a2a;
   border-radius: 8px;
@@ -283,7 +283,7 @@ watch(() => props.segments, updateWidth)
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 220px;
+  height: 140px;
   color: #888;
   font-family: sans-serif;
   background: #121212;

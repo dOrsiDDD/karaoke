@@ -44,10 +44,11 @@
   </div>
 </template>
 
+<script setup>
 const emits = defineEmits(['remove-first-song'])
 
 const props = defineProps({
-  songs: Array
+  songs: Array,
 })
 
 async function removeSong(song) {
@@ -56,12 +57,12 @@ async function removeSong(song) {
   )
 
   if (index === 0) {
-    emits('remove-first-song');
-    return;
+    emits('remove-first-song')
+    return
   }
 
   if (index > 0 && index < props.songs.length) {
-    props.songs.splice(index, 1);
+    props.songs.splice(index, 1)
   }
 }
 </script>
